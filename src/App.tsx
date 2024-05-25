@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import "./App.css";
 import {
@@ -30,6 +30,7 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import { instanceAxios } from "./config/axios";
 import { Link } from "react-router-dom";
 import PopupDetailAddress from "./components/PopupDetailAddress/PopupDetailAddress";
+import { useDownloadExcel } from "react-export-table-to-excel";
 
 interface Data {
   helper: React.ReactNode;
@@ -119,100 +120,6 @@ const BootstrapTooltip = styled(({ className, ...props }: TooltipProps) => (
   },
 }));
 
-const headCells: readonly HeadCell[] = [
-  {
-    id: "helper",
-    numeric: false,
-    disablePadding: true,
-    label: (
-      <LightTooltip
-        title="See preview of the Transaction details"
-        arrow
-        placement="right-start"
-      >
-        <HelpOutlineOutlinedIcon />
-      </LightTooltip>
-    ),
-    width: 52,
-    className: "table-head-see",
-    align: "center",
-  },
-  {
-    id: "transactionHash",
-    numeric: false,
-    disablePadding: false,
-    label: "Transaction Hash",
-    align: "left",
-  },
-  {
-    id: "method",
-    numeric: false,
-    disablePadding: false,
-    label: (
-      <Box sx={{ display: "flex", gap: "8px" }}>
-        <span>Method</span>
-        <LightTooltip
-          title="Function executed based on decoded input data. For unidentified functional, method ID is displayed instead"
-          arrow
-          placement="right-start"
-        >
-          <HelpOutlineOutlinedIcon />
-        </LightTooltip>
-      </Box>
-    ),
-    align: "left",
-  },
-  {
-    id: "block",
-    numeric: true,
-    disablePadding: false,
-    label: "Block",
-    align: "left",
-  },
-  {
-    id: "age",
-    numeric: true,
-    disablePadding: false,
-    label: <p style={{ color: "#0784c3" }}>Age</p>,
-    align: "left",
-  },
-  {
-    id: "from",
-    numeric: true,
-    disablePadding: false,
-    label: "From",
-    align: "left",
-  },
-  {
-    id: "inOut",
-    numeric: true,
-    disablePadding: false,
-    label: "",
-    align: "left",
-  },
-  {
-    id: "to",
-    numeric: true,
-    disablePadding: false,
-    label: "To",
-    align: "left",
-  },
-  {
-    id: "value",
-    numeric: true,
-    disablePadding: false,
-    label: "Value",
-    align: "left",
-  },
-  {
-    id: "token",
-    numeric: true,
-    disablePadding: false,
-    label: "Token",
-    align: "left",
-  },
-];
-
 const timeAgo = (timestamp: string) => {
   const date = new Date(Number(timestamp) * 1000);
   const hour = date.getHours();
@@ -229,7 +136,7 @@ const convertTimestamp = (timestamp: string) => {
     date.getFullYear() +
     "-" +
     ("0" + (date.getMonth() + 1)).slice(-2) +
-    "-" + // Thêm 1 vào tháng vì tháng trong JS bắt đầu từ 0
+    "-" +
     ("0" + date.getDate()).slice(-2) +
     " " +
     ("0" + date.getHours()).slice(-2) +
@@ -248,6 +155,7 @@ export const shortenAddress = (address: string) => {
 };
 
 function App() {
+  const tableRef = useRef<any>(null);
   const [dataTokenTransfer, setDataTokenTransfer] = useState<
     IDataTokenTransfer[]
   >([]);
@@ -257,6 +165,137 @@ function App() {
     page: 1,
     take: 25,
   });
+  const [isColumnDatetimeFormat, setIsColumnDatetimeFormat] =
+    useState<boolean>(false);
+  const [isShowInfoNote, setIsShowInfoNote] = useState<boolean>(true);
+
+  const headCells: readonly HeadCell[] = [
+    {
+      id: "helper",
+      numeric: false,
+      disablePadding: true,
+      label: (
+        <LightTooltip
+          title="See preview of the Transaction details"
+          arrow
+          placement="right-start"
+        >
+          <HelpOutlineOutlinedIcon />
+        </LightTooltip>
+      ),
+      width: 52,
+      className: "table-head-see",
+      align: "center",
+    },
+    {
+      id: "transactionHash",
+      numeric: false,
+      disablePadding: false,
+      label: "Transaction Hash",
+      align: "left",
+    },
+    {
+      id: "method",
+      numeric: false,
+      disablePadding: false,
+      label: (
+        <Box sx={{ display: "flex", gap: "8px" }}>
+          <span>Method</span>
+          <LightTooltip
+            title="Function executed based on decoded input data. For unidentified functional, method ID is displayed instead"
+            arrow
+            placement="right-start"
+          >
+            <HelpOutlineOutlinedIcon />
+          </LightTooltip>
+        </Box>
+      ),
+      align: "left",
+    },
+    {
+      id: "block",
+      numeric: true,
+      disablePadding: false,
+      label: "Block",
+      align: "left",
+    },
+    {
+      id: "age",
+      numeric: true,
+      disablePadding: false,
+      label: (
+        <BootstrapTooltip
+          title={
+            !isColumnDatetimeFormat
+              ? "Click to show Datetime Format"
+              : "Click to show Age"
+          }
+          placement="top"
+        >
+          <div>
+            {isColumnDatetimeFormat && (
+              <p
+                style={{ color: "#0784c3", cursor: "pointer", width: "120px" }}
+                aria-hidden
+                onClick={() => {
+                  setIsColumnDatetimeFormat(!isColumnDatetimeFormat);
+                }}
+              >
+                Date Time (UTC)
+              </p>
+            )}
+            {!isColumnDatetimeFormat && (
+              <p
+                style={{ color: "#0784c3", cursor: "pointer", width: "0px" }}
+                aria-hidden
+                onClick={() => {
+                  setIsColumnDatetimeFormat(!isColumnDatetimeFormat);
+                }}
+              >
+                Age
+              </p>
+            )}
+          </div>
+        </BootstrapTooltip>
+      ),
+      align: "left",
+    },
+    {
+      id: "from",
+      numeric: true,
+      disablePadding: false,
+      label: "From",
+      align: "left",
+    },
+    {
+      id: "inOut",
+      numeric: true,
+      disablePadding: false,
+      label: "",
+      align: "left",
+    },
+    {
+      id: "to",
+      numeric: true,
+      disablePadding: false,
+      label: "To",
+      align: "left",
+    },
+    {
+      id: "value",
+      numeric: true,
+      disablePadding: false,
+      label: "Value",
+      align: "left",
+    },
+    {
+      id: "token",
+      numeric: true,
+      disablePadding: false,
+      label: "Token",
+      align: "left",
+    },
+  ];
 
   useEffect(() => {
     instanceAxios
@@ -265,12 +304,8 @@ function App() {
       )
       .then((response: any) => {
         setDataTokenTransfer(response.result);
-        // setLoading(false);
       })
-      .catch((error) => {
-        // setError(error);
-        // setLoading(false);
-      });
+      .catch((error) => {});
   }, [parameters]);
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -290,24 +325,36 @@ function App() {
     });
   };
 
+  const { onDownload: onDownloadFileExcel } = useDownloadExcel({
+    currentTableRef: tableRef.current,
+    filename: "export-token-transfer",
+    sheet: "export-token-transfer",
+  });
+
   return (
     <div className="App">
       <Container maxWidth="lg">
         <div className="wrapper-table">
           <div className="wrapper-table-head">
-            <div className="wrapper-table-head-info">
-              <div className="wrapper-table-head-info-text">
-                <span>
-                  <InfoOutlinedIcon />
-                  Transactions involving tokens marked as suspicious, unsafe,
-                  spam or brand infringement are currently hidden. To show them,
-                  go to Site Settings.
-                </span>
+            {isShowInfoNote && (
+              <div className="wrapper-table-head-info">
+                <div className="wrapper-table-head-info-text">
+                  <span>
+                    <InfoOutlinedIcon />
+                    Transactions involving tokens marked as suspicious, unsafe,
+                    spam or brand infringement are currently hidden. To show
+                    them, go to Site Settings.
+                  </span>
+                </div>
+                <IconButton
+                  className="btn-close-info"
+                  aria-label="close"
+                  onClick={() => setIsShowInfoNote(false)}
+                >
+                  <CloseOutlinedIcon sx={{ fontSize: 24 }} />
+                </IconButton>
               </div>
-              <IconButton className="btn-close-info" aria-label="close">
-                <CloseOutlinedIcon sx={{ fontSize: 24 }} />
-              </IconButton>
-            </div>
+            )}
             <div className="wrapper-table-head-table-info">
               <p>
                 <BootstrapTooltip title="Oldest First" placement="right">
@@ -315,7 +362,9 @@ function App() {
                 </BootstrapTooltip>
                 Latest {parameters.take} BEP-20 Token Transfer Events (View All)
               </p>
+
               <Button
+                onClick={onDownloadFileExcel}
                 startIcon={<FileDownloadRoundedIcon />}
                 variant="outlined"
                 size="medium"
@@ -338,6 +387,7 @@ function App() {
           </div>
           <TableContainer>
             <Table
+              ref={tableRef}
               aria-labelledby="tableTitle"
               size={"medium"}
               sx={{
@@ -475,11 +525,22 @@ function App() {
                       </TableCell>
                       <TableCell scope="row" padding="none">
                         <BootstrapTooltip
-                          title={convertTimestamp(item.timeStamp)}
+                          title={
+                            !isColumnDatetimeFormat
+                              ? convertTimestamp(item.timeStamp)
+                              : timeAgo(item.timeStamp)
+                          }
                           placement="top"
                         >
-                          <p className="title-time-ago">
-                            {timeAgo(item.timeStamp)}
+                          <p
+                            className="title-time-ago"
+                            style={{
+                              width: isColumnDatetimeFormat ? "140px" : "70px",
+                            }}
+                          >
+                            {isColumnDatetimeFormat
+                              ? convertTimestamp(item.timeStamp)
+                              : timeAgo(item.timeStamp)}
                           </p>
                         </BootstrapTooltip>
                       </TableCell>
