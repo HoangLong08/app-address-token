@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 
 import "./App.css";
 import {
+  Box,
   Button,
   Chip,
+  ClickAwayListener,
   Container,
   IconButton,
   styled,
@@ -26,6 +28,7 @@ import RemoveRedEyeOutlinedIcon from "@mui/icons-material/RemoveRedEyeOutlined";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import { instanceAxios } from "./config/axios";
 import { Link } from "react-router-dom";
+import PopupDetailAddress from "./components/PopupDetailAddress/PopupDetailAddress";
 
 interface Data {
   helper: React.ReactNode;
@@ -78,11 +81,20 @@ interface IResponseDataTokenTransfer {
   result: IDataTokenTransfer[];
 }
 
+interface IParameters {
+  page: number;
+  take: number;
+}
+
 const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
   <Tooltip {...props} classes={{ popper: className }} />
 ))(({ theme }) => ({
   [`& .${tooltipClasses.arrow}`]: {
     color: theme.palette.common.white,
+    "&::before": {
+      backgroundColor: theme.palette.common.white,
+      border: "1px solid #dee2e6",
+    },
   },
   [`& .${tooltipClasses.tooltip}`]: {
     backgroundColor: theme.palette.common.white,
@@ -90,6 +102,7 @@ const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
     fontSize: "1.3rem",
     border: "1px solid #dee2e6",
     padding: "16px",
+    textAlign: "left",
   },
 }));
 
@@ -134,7 +147,18 @@ const headCells: readonly HeadCell[] = [
     id: "method",
     numeric: false,
     disablePadding: false,
-    label: "Method",
+    label: (
+      <Box sx={{ display: "flex", gap: "8px" }}>
+        <span>Method</span>
+        <LightTooltip
+          title="Function executed based on decoded input data. For unidentified functional, method ID is displayed instead"
+          arrow
+          placement="right-start"
+        >
+          <HelpOutlineOutlinedIcon />
+        </LightTooltip>
+      </Box>
+    ),
     align: "left",
   },
   {
@@ -148,7 +172,7 @@ const headCells: readonly HeadCell[] = [
     id: "age",
     numeric: true,
     disablePadding: false,
-    label: "Age",
+    label: <p style={{ color: "#0784c3" }}>Age</p>,
     align: "left",
   },
   {
@@ -197,7 +221,7 @@ const timeAgo = (timestamp: string) => {
   return `Just now`;
 };
 
-const shortenAddress = (address: string) => {
+export const shortenAddress = (address: string) => {
   const start = address.slice(0, 10);
   const end = address.slice(-8);
   return `${start}....${end}`;
@@ -207,13 +231,17 @@ function App() {
   const [dataTokenTransfer, setDataTokenTransfer] = useState<
     IDataTokenTransfer[]
   >([]);
-
+  const [openDetail, setOpenDetail] = useState<string>("");
   const [copied, setCopied] = useState<string>("");
+  const [parameters, setParameters] = useState<IParameters>({
+    page: 1,
+    take: 25,
+  });
 
   useEffect(() => {
     instanceAxios
       .get<IResponseDataTokenTransfer>(
-        "?module=account&action=tokentx&contractaddress=0xe02df9e3e622debdd69fb838bb799e3f168902c5&address=0x0c82922944350ffe0ec8ad1f08995ae0eed10e75&page=1&offset=5&sort=asc&apikey=YourApiKeyToken"
+        `?module=account&action=tokentx&contractaddress=0xe02df9e3e622debdd69fb838bb799e3f168902c5&address=0x0c82922944350ffe0ec8ad1f08995ae0eed10e75&page=${parameters.page}&offset=${parameters.take}&sort=asc&apikey=YourApiKeyToken`
       )
       .then((response: any) => {
         setDataTokenTransfer(response.result);
@@ -223,7 +251,7 @@ function App() {
         // setError(error);
         // setLoading(false);
       });
-  }, []);
+  }, [parameters]);
 
   return (
     <div className="App">
@@ -313,50 +341,75 @@ function App() {
                   return (
                     <TableRow
                       hover
-                      // onClick={(event) => handleClick(event, row.id)}
                       role="checkbox"
-                      // aria-checked={isItemSelected}
                       tabIndex={-1}
                       key={item.blockNumber}
-                      // selected={isItemSelected}
                       sx={{ cursor: "pointer" }}
                     >
-                      <TableCell
-                        // component="th"
-                        // id={labelId}
-                        scope="row"
-                        padding="none"
-                        align="center"
-                      >
-                        <Button
-                          startIcon={<RemoveRedEyeOutlinedIcon />}
-                          variant="outlined"
-                          size="small"
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            color: "#212529",
-                            borderColor: "#e9ecef",
-                            padding: "8px",
+                      <TableCell scope="row" padding="none" align="center">
+                        <ClickAwayListener
+                          onClickAway={() => setOpenDetail("")}
+                        >
+                          <div>
+                            <LightTooltip
+                              PopperProps={{
+                                disablePortal: true,
+                              }}
+                              onClose={() => setOpenDetail("")}
+                              open={openDetail === item.hash}
+                              disableFocusListener
+                              disableHoverListener
+                              disableTouchListener
+                              title={
+                                <PopupDetailAddress
+                                  from={item.from}
+                                  to={item.to}
+                                  transactionFee={0.03}
+                                  nonce={item.nonce}
+                                />
+                              }
+                              arrow
+                              placement="right"
+                              sx={{
+                                maxWidth: "400px",
 
-                            ".MuiButton-icon": {
-                              width: "14px",
-                              height: "14px",
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              marginRight: "0px",
-                            },
-                          }}
-                        />
+                                ".MuiTooltip-tooltip": {
+                                  maxWidth: "400px",
+                                },
+                              }}
+                            >
+                              <Button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setOpenDetail(item.hash);
+                                }}
+                                startIcon={<RemoveRedEyeOutlinedIcon />}
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  color: "#212529",
+                                  borderColor: "#e9ecef",
+                                  padding: "8px",
+
+                                  ".MuiButton-icon": {
+                                    width: "14px",
+                                    height: "14px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    marginRight: "0px",
+                                  },
+                                }}
+                              />
+                            </LightTooltip>
+                          </div>
+                        </ClickAwayListener>
                       </TableCell>
-                      <TableCell
-                        // component="th"
-                        // id={labelId}
-                        scope="row"
-                        padding="none"
-                      >
+                      <TableCell scope="row" padding="none">
                         <Link to="/" className="title-transaction-hash">
                           {item.hash}
                         </Link>
@@ -384,12 +437,7 @@ function App() {
                           {item.blockNumber}
                         </Link>
                       </TableCell>
-                      <TableCell
-                        // component="th"
-                        // id={labelId}
-                        scope="row"
-                        padding="none"
-                      >
+                      <TableCell scope="row" padding="none">
                         <p className="title-time-ago">
                           {timeAgo(item.timeStamp)}
                         </p>
