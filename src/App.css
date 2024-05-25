@@ -85,6 +85,10 @@ body {
   white-space: nowrap;
 }
 
+.title-transaction-block-number {
+  width: 60px;
+}
+
 .title-time-ago {
   width: 80px;
 }

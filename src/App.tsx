@@ -14,6 +14,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Tooltip,
   tooltipClasses,
@@ -221,6 +222,25 @@ const timeAgo = (timestamp: string) => {
   return `Just now`;
 };
 
+const convertTimestamp = (timestamp: string) => {
+  const date = new Date(Number(timestamp) * 1000);
+
+  const formattedTime =
+    date.getFullYear() +
+    "-" +
+    ("0" + (date.getMonth() + 1)).slice(-2) +
+    "-" + // Thêm 1 vào tháng vì tháng trong JS bắt đầu từ 0
+    ("0" + date.getDate()).slice(-2) +
+    " " +
+    ("0" + date.getHours()).slice(-2) +
+    ":" +
+    ("0" + date.getMinutes()).slice(-2) +
+    ":" +
+    ("0" + date.getSeconds()).slice(-2);
+
+  return formattedTime;
+};
+
 export const shortenAddress = (address: string) => {
   const start = address.slice(0, 10);
   const end = address.slice(-8);
@@ -253,6 +273,23 @@ function App() {
       });
   }, [parameters]);
 
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setParameters({
+      ...parameters,
+      page: newPage,
+    });
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setParameters({
+      ...parameters,
+      take: parseInt(event.target.value, 10),
+      page: 1,
+    });
+  };
+
   return (
     <div className="App">
       <Container maxWidth="lg">
@@ -276,7 +313,7 @@ function App() {
                 <BootstrapTooltip title="Oldest First" placement="right">
                   <FilterAltRoundedIcon />
                 </BootstrapTooltip>
-                Latest 25 BEP-20 Token Transfer Events (View All)
+                Latest {parameters.take} BEP-20 Token Transfer Events (View All)
               </p>
               <Button
                 startIcon={<FileDownloadRoundedIcon />}
@@ -419,10 +456,9 @@ function App() {
                           <Chip
                             label="Transfer"
                             sx={{
-                              border: "1px solid #919191",
+                              border: "1px solid #dfe0e1",
                               borderRadius: "6px",
-                              padding: "2px 0",
-                              height: "20px",
+                              height: "24px",
                               fontSize: "1.1rem",
                               backgroundColor: "#f8f9fa",
                             }}
@@ -432,22 +468,26 @@ function App() {
                       <TableCell scope="row" padding="none">
                         <Link
                           to={`/block/${item.blockNumber}`}
-                          className="title-transaction-hash"
+                          className="title-transaction-hash title-transaction-block-number"
                         >
                           {item.blockNumber}
                         </Link>
                       </TableCell>
                       <TableCell scope="row" padding="none">
-                        <p className="title-time-ago">
-                          {timeAgo(item.timeStamp)}
-                        </p>
+                        <BootstrapTooltip
+                          title={convertTimestamp(item.timeStamp)}
+                          placement="top"
+                        >
+                          <p className="title-time-ago">
+                            {timeAgo(item.timeStamp)}
+                          </p>
+                        </BootstrapTooltip>
                       </TableCell>
                       <TableCell scope="row" padding="none">
                         <div className="wrapper-address-title">
                           <BootstrapTooltip title={item.from} placement="top">
                             <p>{shortenAddress(item.from)}</p>
                           </BootstrapTooltip>
-
                           <IconButton
                             aria-label="copy"
                             aria-hidden
@@ -530,6 +570,15 @@ function App() {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={130}
+            rowsPerPage={parameters.take}
+            page={parameters.page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </div>
       </Container>
     </div>
